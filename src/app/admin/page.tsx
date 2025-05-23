@@ -1,35 +1,42 @@
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationPanel from '@/components/NotificationPanel';
 
 export default function AdminDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  useEffect(() => {
+  // استخدام useEffect لجلب العقارات عند تحميل الصفحة
+  useState(() => {
     const fetchPendingProperties = async () => {
-      try {
-        const response = await fetch('/api/properties?status=pending');
-        const data = await response.json();
-        
-        if (data.success) {
-          setProperties(data.properties);
-        } else {
-          setMessage({ type: 'error', text: data.message || 'حدث خطأ أثناء جلب العقارات' });
+      if (status === 'authenticated' && session?.user?.role === 'admin') {
+        try {
+          const response = await fetch('/api/properties?status=pending');
+          const data = await response.json();
+          
+          if (data.success) {
+            setProperties(data.properties);
+          } else {
+            setMessage({ type: 'error', text: data.message || 'حدث خطأ أثناء جلب العقارات' });
+          }
+        } catch (error) {
+          console.error('خطأ في جلب العقارات:', error);
+          setMessage({ type: 'error', text: 'حدث خطأ أثناء جلب العقارات' });
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('خطأ في جلب العقارات:', error);
-        setMessage({ type: 'error', text: 'حدث خطأ أثناء جلب العقارات' });
-      } finally {
+      } else {
         setLoading(false);
       }
     };
     
     fetchPendingProperties();
-  }, []);
+  }, [status, session]);
 
   const handleReview = async (propertyId, status) => {
     try {
@@ -62,6 +69,17 @@ export default function AdminDashboard() {
     }
   };
 
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div>
+          <p className="mt-2 text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!session || session.user.role !== 'admin') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -83,7 +101,7 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">لوحة تحكم المدير</h1>
           <div className="flex items-center space-x-4">
             <NotificationPanel />
-            <div className="text-sm text-gray-700">
+            <div className="text-sm text-gray-700 mr-4">
               مرحباً، {session.user.name}
             </div>
           </div>

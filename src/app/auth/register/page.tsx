@@ -1,11 +1,15 @@
+'use client';
+
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession, signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultRole = searchParams.get('role') || 'property_owner';
+  const { data: session, status } = useSession();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -16,6 +20,16 @@ export default function RegisterPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // إعادة توجيه المستخدم إذا كان مسجل دخوله بالفعل
+  if (status === 'authenticated') {
+    if (session.user.role === 'admin') {
+      router.push('/admin');
+    } else {
+      router.push('/dashboard');
+    }
+    return null;
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,6 +93,17 @@ export default function RegisterPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div>
+          <p className="mt-2 text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">

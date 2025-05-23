@@ -1,19 +1,26 @@
+'use client';
+
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function PropertyForm() {
   const { data: session } = useSession();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const router = useRouter();
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     location: '',
     price: '',
-    features: '',
-    images: []
+    bedrooms: '',
+    bathrooms: '',
+    area: '',
+    propertyType: 'apartment'
   });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,40 +36,38 @@ export default function PropertyForm() {
     setMessage({ type: '', text: '' });
 
     try {
-      // تحويل الخصائص إلى مصفوفة
-      const featuresArray = formData.features
-        .split(',')
-        .map(feature => feature.trim())
-        .filter(feature => feature);
-
       const response = await fetch('/api/properties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
-          features: featuresArray
-        }),
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (data.success) {
         setMessage({ 
           type: 'success', 
-          text: 'تم إضافة العقار بنجاح وهو الآن قيد المراجعة' 
+          text: 'تم إضافة العقار بنجاح وهو قيد المراجعة الآن' 
         });
+        
         // إعادة تعيين النموذج
         setFormData({
           title: '',
           description: '',
           location: '',
           price: '',
-          features: '',
-          images: []
+          bedrooms: '',
+          bathrooms: '',
+          area: '',
+          propertyType: 'apartment'
         });
+        
+        // إعادة توجيه المستخدم إلى لوحة التحكم بعد ثانيتين
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 2000);
       } else {
         setMessage({ 
           type: 'error', 
@@ -81,8 +86,8 @@ export default function PropertyForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">إضافة عقار جديد</h1>
+    <div className="bg-white shadow rounded-lg p-6">
+      <h2 className="text-xl font-semibold text-gray-800 mb-6">إضافة عقار جديد</h2>
       
       {message.text && (
         <div className={`p-4 mb-6 rounded-md ${
@@ -93,105 +98,150 @@ export default function PropertyForm() {
       )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-            عنوان العقار
-          </label>
-          <input
-            type="text"
-            id="title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="أدخل عنوان العقار"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              عنوان العقار *
+            </label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              required
+              value={formData.title}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="مثال: شقة فاخرة في وسط المدينة"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+              الموقع *
+            </label>
+            <input
+              type="text"
+              id="location"
+              name="location"
+              required
+              value={formData.location}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="مثال: الرياض، حي النزهة"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+              السعر (ريال) *
+            </label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              required
+              min="0"
+              value={formData.price}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="مثال: 500000"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="propertyType" className="block text-sm font-medium text-gray-700 mb-1">
+              نوع العقار *
+            </label>
+            <select
+              id="propertyType"
+              name="propertyType"
+              required
+              value={formData.propertyType}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="apartment">شقة</option>
+              <option value="villa">فيلا</option>
+              <option value="house">منزل</option>
+              <option value="land">أرض</option>
+              <option value="commercial">عقار تجاري</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="bedrooms" className="block text-sm font-medium text-gray-700 mb-1">
+              عدد غرف النوم
+            </label>
+            <input
+              type="number"
+              id="bedrooms"
+              name="bedrooms"
+              min="0"
+              value={formData.bedrooms}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="مثال: 3"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="bathrooms" className="block text-sm font-medium text-gray-700 mb-1">
+              عدد الحمامات
+            </label>
+            <input
+              type="number"
+              id="bathrooms"
+              name="bathrooms"
+              min="0"
+              value={formData.bathrooms}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="مثال: 2"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="area" className="block text-sm font-medium text-gray-700 mb-1">
+              المساحة (متر مربع)
+            </label>
+            <input
+              type="number"
+              id="area"
+              name="area"
+              min="0"
+              value={formData.area}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="مثال: 120"
+            />
+          </div>
         </div>
         
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            وصف العقار
+            وصف العقار *
           </label>
           <textarea
             id="description"
             name="description"
+            rows={4}
+            required
             value={formData.description}
             onChange={handleChange}
-            required
-            rows={4}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="أدخل وصفاً تفصيلياً للعقار"
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-            الموقع
-          </label>
-          <input
-            type="text"
-            id="location"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="أدخل موقع العقار"
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-            السعر
-          </label>
-          <input
-            type="number"
-            id="price"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            required
-            min="0"
-            step="0.01"
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="أدخل سعر العقار"
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="features" className="block text-sm font-medium text-gray-700 mb-1">
-            المميزات (مفصولة بفواصل)
-          </label>
-          <input
-            type="text"
-            id="features"
-            name="features"
-            value={formData.features}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="مثال: 3 غرف نوم, 2 حمام, موقف سيارات"
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="images" className="block text-sm font-medium text-gray-700 mb-1">
-            روابط الصور (سيتم إضافة هذه الميزة لاحقاً)
-          </label>
-          <p className="text-xs text-gray-500 mb-2">
-            ملاحظة: ميزة رفع الصور ستكون متاحة في الإصدار القادم
-          </p>
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="اكتب وصفاً تفصيلياً للعقار..."
+          ></textarea>
         </div>
         
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
               isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
-            {isSubmitting ? 'جاري الإرسال...' : 'إضافة العقار'}
+            {isSubmitting ? 'جاري الإرسال...' : 'إرسال العقار للمراجعة'}
           </button>
         </div>
       </form>

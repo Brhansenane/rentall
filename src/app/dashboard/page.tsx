@@ -1,35 +1,41 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationPanel from '@/components/NotificationPanel';
 
 export default function OwnerDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     const fetchMyProperties = async () => {
-      try {
-        const response = await fetch('/api/properties/my-properties');
-        const data = await response.json();
-        
-        if (data.success) {
-          setProperties(data.properties);
-        } else {
-          setMessage({ type: 'error', text: data.message || 'حدث خطأ أثناء جلب العقارات' });
+      if (status === 'authenticated' && session?.user?.role === 'property_owner') {
+        try {
+          const response = await fetch('/api/properties/my-properties');
+          const data = await response.json();
+          
+          if (data.success) {
+            setProperties(data.properties);
+          } else {
+            setMessage({ type: 'error', text: data.message || 'حدث خطأ أثناء جلب العقارات' });
+          }
+        } catch (error) {
+          console.error('خطأ في جلب العقارات:', error);
+          setMessage({ type: 'error', text: 'حدث خطأ أثناء جلب العقارات' });
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('خطأ في جلب العقارات:', error);
-        setMessage({ type: 'error', text: 'حدث خطأ أثناء جلب العقارات' });
-      } finally {
+      } else {
         setLoading(false);
       }
     };
     
     fetchMyProperties();
-  }, []);
+  }, [status, session]);
 
   // تحديد لون حالة العقار
   const getStatusColor = (status) => {
@@ -58,6 +64,17 @@ export default function OwnerDashboard() {
         return 'غير معروف';
     }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div>
+          <p className="mt-2 text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session || session.user.role !== 'property_owner') {
     return (
